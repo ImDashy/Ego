@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Animaism Tree Map</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    html, body, #root { height: 100%; }
+    body { margin: 0; background: #000; }
+    @keyframes animaism-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  </style>
+  <!-- React 18 UMD -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- react-draggable UMD -->
+  <script crossorigin src="https://unpkg.com/react-draggable@4.4.6/dist/react-draggable.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    const { useState, useRef } = React;
+    const { Draggable } = window.ReactDraggable || {};
+
+    function cx(...args) {
+      return args
+        .flat(Infinity)
+        .filter((val) => {
+          if (!val) return false;
+          if (typeof val === 'string') return true;
+          if (typeof val === 'number') return true;
+          if (typeof val === 'object') {
+            return Object.entries(val).some(([key, truthy]) => truthy);
+          }
+          return false;
+        })
+        .map((val) => {
+          if (typeof val === 'string' || typeof val === 'number') {
+            return val;
+          }
+          return Object.keys(val).filter((k) => val[k]).join(' ');
+        })
+        .join(' ');
+    }
+
+    const clsx = cx;
+
+    function mapOffsetsToQuadrant(x, y, threshold = 200) {
+      if (y < -threshold && x < 0) return "UL";
+      if (y < -threshold && x > 0) return "UR";
+      if (y > threshold && x < 0) return "LL";
+      if (y > threshold && x > 0) return "LR";
+      return null;
+    }
+
+    class ErrorBoundary extends React.Component {
+      constructor(props){ super(props); this.state = { hasError:false, err:null }; }
+      static getDerivedStateFromError(err){ return { hasError:true, err }; }
+      componentDidCatch(err, info){ try { console.error(err, info); } catch(_){} }
+      render(){
+        if(this.state.hasError){
+          return (
+            React.createElement('div', { className: 'p-4 m-4 rounded-lg bg-red-900/40 border border-red-600 text-red-100 text-sm' },
+              React.createElement('strong', null, 'Render error: '), String(this.state.err && (this.state.err.message || this.state.err))
+            )
+          );
+        }
+        return this.props.children;
+      }
+    }
+
+    function InnerAnimaismTreeMap(){
+      const [activeQuadrant, setActiveQuadrant] = useState(null);
+      const containerRef = useRef(null);
+      const seedRef = useRef(null);
+
+      const quadrantData = {
+        UL: {
+          title: "UL – Interior / Individual",
+          subtitle: "(Psyche, Shadow, Dreams)",
+          archetypes: "Magician, Sage, Shadow",
+          physics: "Superposition, Observer Effect",
+          taoism: "Inner Alchemy, Wu‑wei (Yin)",
+          animaism: "Breath, Dream Symbols",
+          weights: "C 0.27, F 0.18, R 0.15, H 0.12, S 0.10, D 0.09",
+          delta: "C ↑, F ↑, R ↑",
+          signals: "Lucid dreams, synchronicities",
+          color: "text-yellow-300",
+        },
+        UR: {
+          title: "UR – Exterior / Individual",
+          subtitle: "(Biology, Action, Tools)",
+          archetypes: "Warrior, Hero, Explorer",
+          physics: "Newton, Conservation",
+          taoism: "Yang action, Butcher‑Ding flow",
+          animaism: "Body form, tool rituals",
+          weights: "S 0.28, D 0.22, N 0.18, F 0.16, C 0.16",
+          delta: "S ↑, D ↑, N ↑",
+          signals: "Fatigue, resonance shifts",
+          color: "text-green-300",
+        },
+        LL: {
+          title: "LL – Interior / Collective",
+          subtitle: "(Myth, Ritual, Values)",
+          archetypes: "Lover, Elder, Storyteller",
+          physics: "Interference, Info Theory",
+          taoism: "Yin receptivity, communal Tao",
+          animaism: "Lineage tokens, shared ritual",
+          weights: "H 0.34, F 0.22, C 0.20, R 0.16",
+          delta: "H ↑, F ↑, C ↑",
+          signals: "Group resonance, shared dreams",
+          color: "text-yellow-400",
+        },
+        LR: {
+          title: "LR – Exterior / Collective",
+          subtitle: "(Systems, Ecology, Order)",
+          archetypes: "Ruler, Engineer, Architect",
+          physics: "Thermo laws, entropy",
+          taoism: "Heaven–Earth cycles (Yang)",
+          animaism: "Dissipation, systemic offerings",
+          weights: "D 0.30, S 0.28, H 0.22, F 0.12, N 0.08",
+          delta: "D ↑, S ↑, H ↑",
+          signals: "Entropy shifts, systemic ripples",
+          color: "text-green-400",
+        },
+      };
+
+      function getCenterOffsets(){
+        const c = containerRef.current && containerRef.current.getBoundingClientRect && containerRef.current.getBoundingClientRect();
+        const s = seedRef.current && seedRef.current.getBoundingClientRect && seedRef.current.getBoundingClientRect();
+        if(!c || !s) return { dx:0, dy:0 };
+        const cX = c.left + c.width/2;
+        const cY = c.top + c.height/2;
+        const sX = s.left + s.width/2;
+        const sY = s.top + s.height/2;
+        return { dx: sX - cX, dy: sY - cY };
+      }
+
+      return (
+        React.createElement('div', { className: 'flex flex-col items-center justify-center p-6 bg-gradient-to-b from-black via-green-950 to-yellow-900 min-h-screen text-white' },
+          React.createElement('div', { ref: containerRef, className: 'relative w-[950px] h-[1350px]' },
+            React.createElement('div', { id: 'deadzone-ring', 'aria-hidden': 'true', className: 'pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2' },
+              React.createElement('div', {
+                className: 'rounded-full',
+                style: {
+                  width: 400, height: 400,
+                  borderRadius: 9999,
+                  border: '2px dashed rgba(231,223,207,0.35)',
+                  boxShadow: 'inset 0 0 0 2px rgba(231,223,207,0.15)',
+                  background: 'radial-gradient(circle, rgba(231,223,207,0.04) 0%, rgba(0,0,0,0) 60%)'
+                },
+                title: '200px dead-zone radius'
+              })
+            ),
+
+            !!activeQuadrant && (
+              React.createElement('div', {
+                role: 'status', 'aria-live': 'polite',
+                className: 'absolute top-0 left-1/2 -translate-x-1/2 bg-black/80 border border-green-700 rounded-lg p-4 w-[420px] z-20 shadow-lg'
+              },
+                React.createElement('h2', { className: cx('text-lg font-bold', quadrantData[activeQuadrant] && quadrantData[activeQuadrant].color) }, quadrantData[activeQuadrant] && quadrantData[activeQuadrant].title),
+                React.createElement('p', { className: 'italic text-xs' }, quadrantData[activeQuadrant] && quadrantData[activeQuadrant].subtitle),
+                React.createElement('ul', { className: 'text-xs mt-2 space-y-1' },
+                  React.createElement('li', null, React.createElement('strong', null, 'Archetypes: '), quadrantData[activeQuadrant] && quadrantData[activeQuadrant].archetypes),
+                  React.createElement('li', null, React.createElement('strong', null, 'Physics: '), quadrantData[activeQuadrant] && quadrantData[activeQuadrant].physics),
+                  React.createElement('li', null, React.createElement('strong', null, 'Taoism: '), quadrantData[activeQuadrant] && quadrantData[activeQuadrant].taoism),
+                  React.createElement('li', null, React.createElement('strong', null, 'Animaism: '), quadrantData[activeQuadrant] && quadrantData[activeQuadrant].animaism),
+                  React.createElement('li', null, React.createElement('strong', null, 'AQAL Weights: '), quadrantData[activeQuadrant] && quadrantData[activeQuadrant].weights),
+                  React.createElement('li', null, React.createElement('strong', null, 'Predicted ΔID: '), quadrantData[activeQuadrant] && quadrantData[activeQuadrant].delta),
+                  React.createElement('li', null, React.createElement('strong', null, 'Signals: '), quadrantData[activeQuadrant] && quadrantData[activeQuadrant].signals)
+                )
+              )
+            ),
+
+            React.createElement(Draggable, {
+              bounds: 'parent',
+              onDrag: function(){ const o = getCenterOffsets(); const q = mapOffsetsToQuadrant(o.dx, o.dy, 200); setActiveQuadrant(q); }
+            },
+              React.createElement('div', {
+                ref: seedRef,
+                className: cx(
+                  'absolute bottom-[-50px] left-1/2 -translate-x-1/2 w-28 h-28',
+                  'rounded-full cursor-grab bg-gradient-to-br from-yellow-600 to-green-600',
+                  'flex items-center justify-center border-2 border-white'
+                ),
+                style: { animation: 'animaism-spin 12s linear infinite' },
+                'aria-label': 'Seed Spiral',
+                title: 'Drag into a quadrant to reveal details'
+              },
+                React.createElement('p', { className: 'text-xs font-bold text-center' }, 'Seed Spiral')
+              )
+            ),
+
+            React.createElement('div', { className: 'absolute top-[10%] left-[10%] text-yellow-400 font-bold text-lg' }, 'UL'),
+            React.createElement('div', { className: 'absolute top-[10%] right-[10%] text-green-400 font-bold text-lg' }, 'UR'),
+            React.createElement('div', { className: 'absolute bottom-[10%] left-[10%] text-yellow-500 font-bold text-lg' }, 'LL'),
+            React.createElement('div', { className: 'absolute bottom-[10%] right-[10%] text-green-500 font-bold text-lg' }, 'LR')
+          )
+        )
+      );
+    }
+
+    function AnimaismTreeMap(){
+      return React.createElement(ErrorBoundary, null, React.createElement(InnerAnimaismTreeMap));
+    }
+
+    // lightweight runtime tests
+    (function(){
+      try {
+        console.assert(cx('a', null, undefined, 'b', false, '', 'c') === 'a b c', 'cx join');
+        console.assert(mapOffsetsToQuadrant(-250, -300) === 'UL');
+        console.assert(mapOffsetsToQuadrant(250, -300) === 'UR');
+        console.assert(mapOffsetsToQuadrant(-250, 300) === 'LL');
+        console.assert(mapOffsetsToQuadrant(250, 300) === 'LR');
+        console.assert(mapOffsetsToQuadrant(0, 0) === null);
+      } catch (e) { console.warn('Self-tests failed', e); }
+    })();
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(React.createElement(AnimaismTreeMap));
+  </script>
+</body>
+</html>
